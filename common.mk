@@ -435,6 +435,9 @@ PRODUCT_PACKAGES += \
     android.hardware.sensors@1.0-impl \
     android.hardware.sensors@1.0-service
 
+# Shipping API
+PRODUCT_SHIPPING_API_LEVEL := 29
+
 # Tetheroffload
 PRODUCT_PACKAGES += \
     ipacm \
