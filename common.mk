@@ -379,6 +379,9 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/qti_whitelist.xml:system/etc/sysconfig/qti_whitelist.xml
 
+# Partitions
+PRODUCT_USE_DYNAMIC_PARTITIONS := true
+
 # QMI
 PRODUCT_PACKAGES += \
     libjson
