@@ -38,16 +38,16 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
     vendor.audio.feature.afe_proxy.enable=true \
     vendor.audio.feature.anc_headset.enable=true \
-    vendor.audio.feature.battery_listener.enable=false \
+    vendor.audio.feature.battery_listener.enable=true \
     vendor.audio.feature.compr_cap.enable=false \
-    vendor.audio.feature.compress_in.enable=false \
+    vendor.audio.feature.compress_in.enable=true \
     vendor.audio.feature.compress_meta_data.enable=true \
     vendor.audio.feature.compr_voip.enable=true \
-    vendor.audio.feature.concurrent_capture.enable=false \
+    vendor.audio.feature.concurrent_capture.enable=true \
     vendor.audio.feature.custom_stereo.enable=true \
     vendor.audio.feature.display_port.enable=true \
     vendor.audio.feature.dsm_feedback.enable=false \
-    vendor.audio.feature.dynamic_ecns.enable=false \
+    vendor.audio.feature.dynamic_ecns.enable=true \
     vendor.audio.feature.ext_hw_plugin.enable=false \
     vendor.audio.feature.external_dsp.enable=false \
     vendor.audio.feature.external_speaker.enable=false \
@@ -57,11 +57,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.audio.feature.hdmi_edid.enable=true \
     vendor.audio.feature.hdmi_passthrough.enable=true \
     vendor.audio.feature.hfp.enable=true \
-    vendor.audio.feature.hifi_audio.enable=true \
+    vendor.audio.feature.hifi_audio.enable=false \
     vendor.audio.feature.hwdep_cal.enable=false \
-    vendor.audio.feature.incall_music.enable=false \
+    vendor.audio.feature.incall_music.enable=true \
     vendor.audio.feature.multi_voice_session.enable=true \
-    vendor.audio.feature.keep_alive.enable=false \
+    vendor.audio.feature.keep_alive.enable=true \
     vendor.audio.feature.kpi_optimize.enable=true \
     vendor.audio.feature.maxx_audio.enable=false \
     vendor.audio.feature.ras.enable=true \
@@ -70,13 +70,30 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.audio.feature.spkr_prot.enable=true \
     vendor.audio.feature.ssrec.enable=true \
     vendor.audio.feature.usb_offload.enable=true \
-    vendor.audio.feature.usb_offload_burst_mode.enable=false \
+    vendor.audio.feature.usb_offload_burst_mode.enable=true \
     vendor.audio.feature.usb_offload_sidetone_volume.enable=false \
     vendor.audio.feature.deepbuffer_as_primary.enable=false \
     vendor.audio.feature.vbat.enable=true \
     vendor.audio.feature.wsa.enable=false \
     vendor.audio.feature.audiozoom.enable=false \
     vendor.audio.feature.snd_mon.enable=true
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.vendor.audio.soundtrigger=sva \
+    ro.vendor.audio.soundtrigger.lowpower=true \
+    ro.vendor.audio.soundtrigger.training.level=50 \
+    ro.vendor.audio.soundtrigger.xanzn.gmm.level=45 \
+    ro.vendor.audio.soundtrigger.xanzn.gmm.user.level=30 \
+    ro.vendor.audio.soundtrigger.xanzn.cnn.level=70 \
+    ro.vendor.audio.soundtrigger.xanzn.vop.level=10 \
+    ro.vendor.audio.soundtrigger.xatx.gmm.level=50 \
+    ro.vendor.audio.soundtrigger.xatx.gmm.user.level=40 \
+    ro.vendor.audio.soundtrigger.xatx.cnn.level=27 \
+    ro.vendor.audio.soundtrigger.xatx.vop.level=10 \
+    ro.vendor.audio.soundtrigger.appdefine.gmm.level=55 \
+    ro.vendor.audio.soundtrigger.appdefine.gmm.user.level=50 \
+    ro.vendor.audio.soundtrigger.appdefine.cnn.level=31 \
+    ro.vendor.audio.soundtrigger.appdefine.vop.level=10
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.config.media_vol_steps=25 \
@@ -116,6 +133,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.surface_flinger.protected_contents=true \
     ro.surface_flinger.vsync_event_phase_offset_ns=2000000 \
     ro.surface_flinger.vsync_sf_event_phase_offset_ns=6000000 \
+    ro.surface_flinger.has_wide_color_display=true \
+    ro.surface_flinger.use_color_management=true \
     ro.vendor.display.cabl=0 \
     vendor.display.disable_skip_validate=1 \
     vendor.display.enable_default_color_mode=1 \
@@ -142,7 +161,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Netflix
 PRODUCT_SYSTEM_DEFAULT_PROPERTIES += \
-    ro.netflix.bsp_rev=Q660-13149-1
+    ro.netflix.bsp_rev=Q6250-19132-1
 
 # Perf
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -168,13 +187,7 @@ PRODUCT_SYSTEM_DEFAULT_PROPERTIES += \
 
 # Sensor
 PRODUCT_PROPERTY_OVERRIDES += \
-    ro.vendor.sdk.sensors.gestures=false \
-    ro.vendor.sensors.cmc=false \
-    ro.vendor.sensors.facing=false \
-    ro.vendor.sensors.dev_ori=true \
-    ro.vendor.sensors.pmd=true \
-    ro.vendor.sensors.sta_detect=true \
-    ro.vendor.sensors.mot_detect=true
+    persist.vendor.sensors.odl.adsp=true
 
 # Time
 PRODUCT_PROPERTY_OVERRIDES += \
