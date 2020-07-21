@@ -17,6 +17,7 @@ typeattribute hal_fingerprint_atoll data_between_core_and_vendor_violators;
 allow hal_fingerprint_atoll fingerprintd_data_file:dir rw_dir_perms;
 allow hal_fingerprint_atoll fingerprintd_data_file:file create_file_perms;
 
+allow hal_fingerprint_atoll sysfs_fps_attr:file rw_file_perms;
 allow hal_fingerprint_atoll sysfs_fingerprint:file rw_file_perms;
 
 allow hal_fingerprint_atoll self:netlink_socket create_socket_perms_no_ioctl;
