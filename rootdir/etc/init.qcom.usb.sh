@@ -51,6 +51,10 @@ fi
 # Override USB default composition
 #
 # If USB persist config not set, set default configuration
+
+fota_oem =`getprop ro.fota.oem`
+debuggable=`getprop ro.debuggable`
+
 if [ "$(getprop persist.vendor.usb.config)" == "" -a \
 	"$(getprop init.svc.vendor.usb-gadget-hal-1-0)" != "running" ]; then
     if [ "$esoc_name" != "" ]; then
@@ -105,9 +109,16 @@ if [ "$(getprop persist.vendor.usb.config)" == "" -a \
 	              "sdm845" | "sdm710")
 		          setprop persist.vendor.usb.config diag,serial_cdev,rmnet,dpl,adb
 		      ;;
-	              "msmnile" | "sm6150" | "trinket" | "lito" | "atoll" | "bengal")
-			  setprop persist.vendor.usb.config diag,serial_cdev,rmnet,dpl,qdss,adb
-		      ;;
+	              "msmnile" | "sm6150" | "trinket" | "lito" | "atoll"  | "bengal" | "curtana" | "curtanacn" | "durandal" | "excalibur" | "joyeuse" | "gram")
+			  		case "$debuggable" in
+					"1")
+							setprop persist.vendor.usb.config adb
+						;;
+					 	*)
+							setprop persist.vendor.usb.config none
+						;;
+						esac
+						;;
 	              *)
 		          setprop persist.vendor.usb.config diag,adb
 		      ;;
@@ -150,15 +161,12 @@ fi
 
 # check configfs is mounted or not
 if [ -d /config/usb_gadget ]; then
-	product_string=`cat /config/usb_gadget/g1/strings/0x409/product` 2> /dev/null
-	if [ "product_string" == "" ]; then
-		# Chip-serial is used for unique MSM identification in Product string
-		msm_serial=`cat /sys/devices/soc0/serial_number`;
-		msm_serial_hex=`printf %08X $msm_serial`
-		machine_type=`cat /sys/devices/soc0/machine`
-		product_string="$machine_type-$soc_hwplatform _SN:$msm_serial_hex"
-		echo "$product_string" > /config/usb_gadget/g1/strings/0x409/product
-	fi
+	# Chip-serial is used for unique MSM identification in Product string
+	msm_serial=`cat /sys/devices/soc0/serial_number`;
+	msm_serial_hex=`printf %08X $msm_serial`
+	machine_type=`cat /sys/devices/soc0/machine`
+	product_string="$machine_type-$soc_hwplatform _SN:$msm_serial_hex"
+	echo "$product_string" > /config/usb_gadget/g1/strings/0x409/product
 
 	# ADB requires valid iSerialNumber; if ro.serialno is missing, use dummy
 	serialnumber=`cat /config/usb_gadget/g1/strings/0x409/serialnumber 2> /dev/null`

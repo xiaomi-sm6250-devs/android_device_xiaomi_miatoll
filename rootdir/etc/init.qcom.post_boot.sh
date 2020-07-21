@@ -72,6 +72,32 @@ function 8937_sched_dcvs_eas()
 
 }
 
+function configure_automotive_sku_parameters() {
+
+    echo 1036800 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+    echo 1056000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+    echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
+    echo 1785600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+
+#read feature id from nvram
+reg_val=`cat /sys/devices/platform/soc/780130.qfprom/qfprom0/nvmem | od -An -t d4`
+feature_id=$(((reg_val >> 20) & 0xFF))
+log -t BOOT -p i "feature id '$feature_id'"
+if [ $feature_id == 0 ]; then
+       echo " SKU Configured : SA8155P"
+       echo 2131200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
+       echo 2419200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq
+       echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+elif [ $feature_id == 1 ]; then
+        echo "SKU Configured : SA8150P"
+        echo 1920000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
+        echo 2227200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq
+        echo 3 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+else
+        echo "unknown feature_id value" $feature_id
+fi
+}
+
 function configure_sku_parameters() {
 
 #read feature id from nvram
@@ -497,6 +523,13 @@ else
 
             vmpres_file_min=$((minfree_5 + (minfree_5 - rem_minfree_4)))
             echo $vmpres_file_min > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
+            if [ $MemTotal -gt 7602176 ]; then
+                echo "18432,23040,27648,45158,119414,168896" > /sys/module/lowmemorykiller/parameters/minfree
+            elif [ $MemTotal -gt 5505024 ]; then
+                echo "18432,23040,27648,38708,102356,144768" > /sys/module/lowmemorykiller/parameters/minfree
+            else
+                echo "18432,23040,27648,32256,55296,80640" > /sys/module/lowmemorykiller/parameters/minfree
+            fi
         else
             # Set LMK series, vmpressure_file_min for 32 bit non-go targets.
             # Disable Core Control, enable KLMK for non-go 8909.
@@ -510,7 +543,7 @@ else
 
         # Enable adaptive LMK for all targets &
         # use Google default LMK series for all 64-bit targets >=2GB.
-        echo 0 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
+        echo 1 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
 
         # Enable oom_reaper
         if [ -f /sys/module/lowmemorykiller/parameters/oom_reaper ]; then
@@ -2623,6 +2656,9 @@ case "$target" in
             done
             echo "cpufreq" > /sys/class/devfreq/soc:qcom,mincpubw/governor
 
+            # Start cdsprpcd only for sdm660 and disable for sdm630
+            start vendor.cdsprpcd
+
             # Start Host based Touch processing
                 case "$hw_platform" in
                         "MTP" | "Surf" | "RCM" | "QRD" )
@@ -2631,13 +2667,6 @@ case "$target" in
                 esac
             ;;
         esac
-
-        # Start cdsprpcd only for sdm660 and disable for sdm630 and sdm636
-        case "$soc_id" in
-            "317" | "324" | "325" | "326" )
-            start vendor.cdsprpcd
-        esac
-
         #Apply settings for sdm630 and Tahaa
         case "$soc_id" in
             "318" | "327" | "385" )
@@ -3342,8 +3371,8 @@ case "$target" in
             done
 
             # cpuset parameters
-                echo 0-5 > /dev/cpuset/background/cpus
-                echo 0-5 > /dev/cpuset/system-background/cpus
+                 echo 0-5     > /dev/cpuset/background/cpus
+                 echo 0-5     > /dev/cpuset/system-background/cpus
 
                 # Turn off scheduler boost at the end
                 echo 0 > /proc/sys/kernel/sched_boost
@@ -3383,6 +3412,7 @@ case "$target" in
     echo 0 > /proc/sys/kernel/sched_coloc_busy_hyst_max_ms
 
     # disable unfiltering
+    echo 20000000 > /proc/sys/kernel/sched_task_unfilter_period
     echo 1 > /proc/sys/kernel/sched_task_unfilter_nr_windows
 
     # configure governor settings for silver cluster
@@ -3609,8 +3639,10 @@ case "$target" in
     # Enable conservative pl
     echo 1 > /proc/sys/kernel/sched_conservative_pl
 
-    echo "0:1248000" > /sys/module/cpu_boost/parameters/input_boost_freq
-    echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
+    echo "0:1324800" > /sys/module/cpu_boost/parameters/input_boost_freq
+    echo 120 > /sys/module/cpu_boost/parameters/input_boost_ms
+    echo "0:0 1:0 2:0 3:0 4:1804800 5:0 6:0 7:2208000" > /sys/module/cpu_boost/parameters/powerkey_input_boost_freq
+    echo 400 > /sys/module/cpu_boost/parameters/powerkey_input_boost_ms
 
     # Set Memory parameters
     configure_memory_parameters
@@ -3692,8 +3724,10 @@ case "$target" in
     done
 
     # cpuset parameters
-    echo 0-5 > /dev/cpuset/background/cpus
-    echo 0-5 > /dev/cpuset/system-background/cpus
+    echo 0-2         > /dev/cpuset/background/cpus
+    echo 0-3         > /dev/cpuset/system-background/cpus
+    echo 0-2,4-7 > /dev/cpuset/foreground/cpus
+    echo 0-7         > /dev/cpuset/top-app/cpus
 
     # Turn off scheduler boost at the end
     echo 0 > /proc/sys/kernel/sched_boost
@@ -3718,7 +3752,7 @@ case "$target" in
 
             # Core control is temporarily disabled till bring up
             echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
-            echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+            echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
             # Core control parameters on big
             echo 40 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
             echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
@@ -3824,9 +3858,8 @@ case "$target" in
             # Turn off scheduler boost at the end
             echo 0 > /proc/sys/kernel/sched_boost
 
-            # Turn off sleep modes till bring up
-            # sleep modes to be enabled after bring up
-            echo 1 > /sys/module/lpm_levels/parameters/sleep_disabled
+            # Turn on sleep modes
+            echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
 
             ;;
         esac
@@ -4705,6 +4738,12 @@ case "$target" in
 
     echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
     configure_memory_parameters
+    target_type=`getprop ro.hardware.type`
+	if [ "$target_type" == "automotive" ]; then
+           # update frequencies
+           configure_automotive_sku_parameters
+	fi
+
     ;;
 esac
 
@@ -5445,7 +5484,7 @@ case "$target" in
         start mpdecision
         echo 512 > /sys/block/mmcblk0/bdi/read_ahead_kb
     ;;
-    "msm8909" | "msm8916" | "msm8937" | "msm8952" | "msm8953" | "msm8994" | "msm8992" | "msm8996" | "msm8998" | "sdm660" | "apq8098_latv" | "sdm845" | "sdm710" | "msmnile" | "sdmshrike" |"msmsteppe" | "sm6150" | "kona" | "lito" | "trinket" | "atoll" | "bengal" )
+    "msm8909" | "msm8916" | "msm8937" | "msm8952" | "msm8953" | "msm8994" | "msm8992" | "msm8996" | "msm8998" | "sdm660" | "apq8098_latv" | "sdm845" | "sdm710" | "qcs605" |"msmnile" | "sdmshrike" |"msmsteppe" | "sm6150" | "kona" | "lito" | "trinket" | "atoll" | "bengal" )
         setprop vendor.post_boot.parsed 1
     ;;
     "apq8084")
@@ -5522,61 +5561,6 @@ case "$target" in
      ;;
 esac
 
-product=`getprop ro.build.product`
-case "$product" in
-	"msmnile_au")
-	#Setting the min and max supported frequencies
-	reg_val=`cat /sys/devices/platform/soc/780130.qfprom/qfprom0/nvmem | od -An -t d4`
-	feature_id=$(((reg_val >> 20) & 0xFF))
-
-	if [ $feature_id == 0 ]; then
-		echo "feature_id is 0 for SA8155"
-		echo 1036800 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
-		echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq
-		echo 2131200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
-		echo 2131200 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq
-		echo 2131200 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq
-		echo 2419200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq
-                echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
-                echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
-	elif [ $feature_id == 1 ]; then
-		echo "feature_id is 1 for SA8150"
-		echo 1036800 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
-		echo 1036800 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
-		echo 1056000 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
-		echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq
-		echo 1785600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq
-		echo 1920000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
-		echo 1920000 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq
-		echo 1920000 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq
-		echo 2227200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq
-                echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
-                echo 3 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
-	else
-		echo "unknown feature_id value" $feature_id
-	fi
-	;;
-	*)
-       ;;
-esac
-
 # Let kernel know our image version/variant/crm_version
 if [ -f /sys/devices/soc0/select_image ]; then
     image_version="10:"
@@ -5594,16 +5578,16 @@ if [ -f /sys/devices/soc0/select_image ]; then
 fi
 
 # Change console log level as per console config property
-# console_config=`getprop persist.console.silent.config`
-# case "$console_config" in
-#     "1")
-#         echo "Enable console config to $console_config"
-#         echo 0 > /proc/sys/kernel/printk
-#         ;;
-#     *)
-#         echo "Enable console config to $console_config"
-#         ;;
-# esac
+console_config=`getprop persist.console.silent.config`
+case "$console_config" in
+    "1")
+        echo "Enable console config to $console_config"
+        echo 0 > /proc/sys/kernel/printk
+        ;;
+    *)
+        echo "Enable console config to $console_config"
+        ;;
+esac
 
 # Parse misc partition path and set property
 misc_link=$(ls -l /dev/block/bootdevice/by-name/misc)

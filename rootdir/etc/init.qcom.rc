@@ -42,10 +42,6 @@ on early-init
     chown system graphics /sys/kernel/debug/dri/0/debug/recovery_dbgbus
     chown system graphics /sys/kernel/debug/dri/0/debug/recovery_vbif_dbgbus
 
-    # Change ownership of sw_sync node
-    chown system graphics /sys/kernel/debug/sync/sw_sync
-    chmod 0666 /sys/kernel/debug/sync/sw_sync
-
     chown root system /dev/kmsg
     chmod 0620 /dev/kmsg
     # Load WIGIG platform driver
@@ -61,6 +57,8 @@ on init
 
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing
+    chmod 0660 /sys/class/leds/red/brightness
+    chown system system /sys/class/leds/red/brightness
 
 on early-boot
     # set RLIMIT_MEMLOCK to 64MB
@@ -131,16 +129,38 @@ on boot
 
     chown bluetooth net_bt /sys/class/rfkill/rfkill0/device/extldo
     chmod 0660 /sys/class/rfkill/rfkill0/device/extldo
-
+     #define back flash and front flash
+        chmod 0660 /sys/class/leds/led:flash_0/brightness
+        chmod 0660 /sys/class/leds/led:flash_1/brightness
+        chmod 0660 /sys/class/leds/led:flash_2/brightness
+        chmod 0660 /sys/class/leds/led:torch_0/brightness
+        chmod 0660 /sys/class/leds/led:torch_1/brightness
+        chmod 0660 /sys/class/leds/led:torch_2/brightness
+        chmod 0660 /sys/class/leds/led:switch_0/brightness
+        chmod 0660 /sys/class/leds/led:switch_1/brightness
+        chmod 0660 /sys/class/leds/flashlight/brightness
+	chmod 0777 /sys/class/ant_class/ant_state
+	chmod 0777 /sys/class/ant_div_class/ant_div_state
+        chown system system /sys/class/leds/led:flash_0/brightness
+        chown system system /sys/class/leds/led:flash_1/brightness
+        chown system system /sys/class/leds/led:flash_2/brightness
+        chown system system /sys/class/leds/led:torch_0/brightness
+        chown system system /sys/class/leds/led:torch_1/brightness
+        chown system system /sys/class/leds/led:torch_2/brightness
+        chown system system /sys/class/leds/led:switch_0/brightness
+        chown system system /sys/class/leds/led:switch_1/brightness
+        chown system system /sys/class/leds/flashlight/brightness
+	chown system system /sys/class/ant_class/ant_state
+	chown system system /sys/class/ant_div_class/ant_div_state
     # This location is used by QCRIL to host UNIX domain
     # socket files used for internal IPC within QCRIL
     # modules
     mkdir /dev/socket/qmux_radio 0770 radio radio
     chmod 2770 /dev/socket/qmux_radio
 
-    mkdir /persist/drm 0770 system system
+    mkdir /mnt/vendor/persist/drm 0770 system system
     mkdir /mnt/vendor/persist/bluetooth 0770 bluetooth bluetooth
-    mkdir /persist/misc 0770 system system
+    mkdir /mnt/vendor/persist/misc 0770 system system
     mkdir /mnt/vendor/persist/alarm 0770 system system
     mkdir /mnt/vendor/persist/time 0770 system system
     mkdir /mnt/vendor/persist/secnvm 0770 system system
@@ -220,6 +240,12 @@ on boot
     # Create hvdcp_opti directory
     mkdir /mnt/vendor/persist/hvdcp_opti 0770 root system
 
+    # Create pa-cal driver directory lct-20181009
+    mkdir /mnt/vendor/persist/audio 0770 audio audio
+
+    #Create camera directory
+    mkdir /mnt/vendor/persist/camera 0755 system cameraserver
+
     #sensors log dir
     mkdir /data/vendor/sensors
     chown system system /data/vendor/sensors
@@ -278,6 +304,9 @@ on post-fs-data
     # Create directory used by audio subsystem
     mkdir /data/vendor/audio 0770 audio audio
 
+    # Create directory used by audio cit
+    mkdir /data/vendor/cit 0770 system system
+
     # Create directory for audio delta files
     mkdir /data/vendor/audio/acdbdata 0770 media audio
     mkdir /data/vendor/audio/acdbdata/delta 0770 media audio
@@ -321,10 +350,20 @@ on post-fs-data
     mkdir /dev/socket/wifihal 0770 wifi wifi
     chmod 2770 /dev/socket/wifihal
 
+    #Create directory for FOTA
+    mkdir /data/fota 0771
+    chown system system /data/fota
+
+    #Create directory for hostapd
+    mkdir /data/hostapd 0770 system wifi
+
     # Create /data/time folder for time-services
     mkdir /data/vendor/time/ 0700 system system
 
     setprop vold.post_fs_data_done 1
+
+    #Create a folder for SRS to be able to create a usercfg file
+    #mkdir /data/data/media 0770 media media
 
     #Create FM dir for patchdownloader
     mkdir /data/vendor/fm 0770 system system
@@ -445,7 +484,7 @@ on property:persist.sys.pil_proxy_timeout=*
 on property:persist.vendor.ssr.restart_level=*
     start vendor.ssr_setup
 
-on property:persist.vendor.ssr.enable_ramdumps=1
+on property:persist.vendor.ssr.enable_ramdumps=1 && property:ro.boot.dp=0xB
     write /sys/module/subsystem_restart/parameters/enable_ramdumps 1
     mkdir /data/vendor/ramdump_ssr 770 system system
     start vendor.ss_ramdump
@@ -529,16 +568,6 @@ service irsc_util /vendor/bin/irsc_util "/vendor/etc/sec_config"
     class core
     user root
     oneshot
-
-service vendor.rmt_storage /vendor/bin/rmt_storage
-    class core
-    user root
-    shutdown critical
-    ioprio rt 0
-
-service vendor.tftp_server /vendor/bin/tftp_server
-   class core
-   user root
 
 service vendor.bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
     class late_start
@@ -788,13 +817,6 @@ service qcom-post-boot /vendor/bin/init.qcom.post_boot.sh
     disabled
     oneshot
 
-service qti-testscripts /system/bin/sh /system/etc/init.qcom.testscripts.sh
-    class late_start
-    user root
-    disabled
-    oneshot
-    seclabel u:r:qti-testscripts:s0
-
 service wifi-sdio-on /vendor/bin/init.qcom.sdio.sh
     class late_start
     group wifi inet
@@ -809,7 +831,6 @@ service wifi-crda /vendor/bin/init.crda.sh
 
 on property:sys.boot_completed=1
     start qcom-post-boot
-    start qti-testscripts
 
 on property:ro.vendor.ril.mbn_copy_completed=1
     write /data/vendor/radio/copy_complete 1
@@ -916,27 +937,36 @@ on property:sys.qbcharger.enable=true
 on property:sys.qbcharger.enable=false
     stop qbcharger
 
-service diag_mdlog_start /system/vendor/bin/diag_mdlog
+# service diag_mdlog_start /system/vendor/bin/diag_mdlog
+service diag_mdlog_start /system/bin/diag_mdlog_system  -n 40 -s 500
     class late_start
     user shell
-    group system oem_2901 sdcard_rw sdcard_r media_rw
+#    group system oem_2901 sdcard_rw sdcard_r media_rw
+    group system diag oem_2901 sdcard_rw sdcard_r media_rw
     disabled
     oneshot
 
-service diag_mdlog_stop /system/vendor/bin/diag_mdlog -k
+#service diag_mdlog_stop /system/vendor/bin/diag_mdlog -k
+service diag_mdlog_stop /system/bin/diag_mdlog_system -k
     class late_start
     user shell
-    group system oem_2901 sdcard_rw sdcard_r media_rw
+#    group system oem_2901 sdcard_rw sdcard_r media_rw
+    group system diag oem_2901 sdcard_rw sdcard_r media_rw
     disabled
     oneshot
+
+on property:persist.vendor.mdlog.enable=true
+    start diag_mdlog_start
+on property:persist.vendor.mdlog.enable=false
+    start diag_mdlog_stop
 
 service qlogd /system/xbin/qlogd
     socket qlogd stream 0662 system system
     class main
     disabled
-on property:persist.sys.qlogd=1
+on property:persist.vendor.qlogd=1
     start qlogd
-on property:persist.sys.qlogd=0
+on property:persist.vendor.qlogd=0
     stop qlogd
 
 service vm_bms /vendor/bin/vm_bms
@@ -1089,6 +1119,7 @@ service vendor.audio-hal-2-0 /vendor/bin/hw/android.hardware.audio@2.0-service
     # audioflinger restarts itself when it loses connection with the hal
     # and its .rc file has an "onrestart restart audio-hal" rule, thus
     # an additional auto-restart from the init process isn't needed.
+    socket audio_hw_socket seqpacket 0666 system system
     oneshot
     interface android.hardware.audio@5.0::IDevicesFactory default
     interface android.hardware.audio@4.0::IDevicesFactory default

@@ -27,6 +27,9 @@
 #
 #
 
+on early-init
+    write /proc/sys/kernel/sched_boost 1
+
 on init
     write /dev/stune/foreground/schedtune.sched_boost_no_override 1
     write /dev/stune/top-app/schedtune.sched_boost_no_override 1
@@ -35,78 +38,129 @@ on init
     write /dev/stune/system-background/schedtune.colocate 0
     write /dev/stune/foreground/schedtune.colocate 0
     write /dev/stune/top-app/schedtune.colocate 1
-
-on fs
+    write /sys/module/qpnp_rtc/parameters/poweron_alarm 1
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
-    mount_all /vendor/etc/fstab.qcom
-    swapon_all /vendor/etc/fstab.qcom
+
+on early-fs
+    start vold
+
+on fs
+    start hwservicemanager
+    mount_all /vendor/etc/fstab.qcom --early
     chown root system /mnt/vendor/persist
     chmod 0771 /mnt/vendor/persist
-    mkdir /mnt/vendor/persist/data 0700 system system
-    mkdir /mnt/vendor/persist/bms 0700 root system
     restorecon_recursive /mnt/vendor/persist
-    write /sys/kernel/boot_adsp/boot 1
 
     mkdir /mnt/vendor/dsp 0770 root root
     copy /vendor/dsp/cdsp/fastrpc_shell_3 /mnt/vendor/dsp/fastrpc_shell_3
     chmod 0644 /mnt/vendor/dsp/fastrpc_shell_3
     mount none /mnt/vendor/dsp/fastrpc_shell_3 /vendor/dsp/cdsp/fastrpc_shell_3 bind
 
-on post-fs
-    start vendor.qseecomd
-    wait_for_prop vendor.sys.listeners.registered true
-    write /dev/ipa 1
+    mkdir /mnt/vendor/persist/data 0700 system system
+    mkdir /mnt/vendor/persist/subsys 0770 root system
+    mkdir /mnt/vendor/persist/audio 0755 system system
+    mkdir /mnt/vendor/persist/haptics 0755 system system
+    mkdir /mnt/vendor/persist/stability 0755 system system
+    mkdir /mnt/vendor/persist/misys 0755 system system
+    #+ add for watermark
+    mkdir /mnt/vendor/persist/camera 0777 root root
 
-on init
-    write /sys/module/qpnp_rtc/parameters/poweron_alarm 1
+    chmod 0664 /sys/class/thermal/thermal_message/sconfig
+    chown system system /sys/class/thermal/thermal_message/sconfig
+    chmod 0666 /sys/class/thermal/thermal_message/temp_state
+    chown system system /sys/class/thermal/thermal_message/temp_state
+
+on late-fs
+    wait_for_prop hwservicemanager.ready true
+    exec_start wait_for_keymaster
+    mount_all /vendor/etc/fstab.qcom --late
+
+service sec_nvm /vendor/bin/sec_nvm
+    class core
+    user system
+    group system
 
 on post-fs-data
-    mkdir /data/tombstones/modem 0771 system system
-    mkdir /data/tombstones/lpass 0771 system system
-    mkdir /data/tombstones/wcnss 0771 system system
-    mkdir /data/tombstones/dsps 0771 system system
+    mkdir /data/tombstones 0771 system system
+    mkdir /tombstones/modem 0771 system system
+    mkdir /tombstones/lpass 0771 system system
+    mkdir /tombstones/wcnss 0771 system system
+    mkdir /tombstones/dsps 0771 system system
     mkdir /data/vendor/hbtp 0750 system system
+    mkdir /persist/qti_fp 0700 system system
+    mkdir /data/vendor/nnhal 0700 system system
+    mkdir /data/vendor/touchpad 0775 system system
+
+    mkdir /data/vendor/thermal 0771 root system
+    mkdir /data/vendor/thermal/config 0771 root system
+    mkdir /data/vendor/mac_addr 0771 system system
+
+	mkdir /data/vendor/wlan_logs 0770 system wifi
+    mkdir /data/vendor/nfc 0770 nfc nfc
+# For cpusets initialize for Silver Only first and then Silver + Gold
+# Silver Only configuration cannot work with 0-7
+#Creat charger log
+    mkdir /data/vendor/charge_logger 0771 system system
 
 on boot
+    chown system system /sys/kernel/hbtp/display_pwr
     start rmt_storage
     start rfs_access
+    write /dev/cpuset/top-app/cpus 0-3
+    write /dev/cpuset/foreground/cpus 0-3
+    write /dev/cpuset/foreground/boost/cpus 0-3
+    write /dev/cpuset/background/cpus 0-3
+    write /dev/cpuset/system-background/cpus 0-3
     write /dev/cpuset/top-app/cpus 0-7
     write /dev/cpuset/foreground/cpus 0-7
     write /dev/cpuset/foreground/boost/cpus 0-7
     write /dev/cpuset/background/cpus 0-7
     write /dev/cpuset/system-background/cpus 0-7
-    ####Regionalization config and prop files####
-    chmod 0644 /persist/speccfg/spec
-    chmod 0644 /persist/speccfg/devicetype
-    chmod 0644 /persist/speccfg/mbnversion
-    chmod 0644 /persist/speccfg/.not_triggered
-    chmod 0644 /persist/speccfg/vendor_ro.prop
-    chmod 0644 /persist/speccfg/vendor_persist.prop
-    chmod 0644 /persist/speccfg/submask
-    chmod 0644 /persist/speccfg/partition
-    chown system system /persist/speccfg/spec
-    chown system system /persist/speccfg/devicetype
-    chown system system /persist/speccfg/mbnversion
-    chown system system /persist/speccfg/.not_triggered
-    chown system system /persist/speccfg/vendor_ro.prop
-    chown system system /persist/speccfg/vendor_persist.prop
-    chown system system /persist/speccfg/submask
-    chown system system /persist/speccfg/partition
 
-#Create folder dump yuv images while debugging
-    mkdir /data/vendor/camera 0770 camera camera
+    #Set the vbus_offset_mv to 1.04v
+    setprop persist.vendor.cp.vbus_offset_mv 1040
+
+# Add a cpuset for the camera daemon
+# We want all cores for camera
+    mkdir /dev/cpuset/camera-daemon
+    write /dev/cpuset/camera-daemon/cpus 0-7
+    write /dev/cpuset/camera-daemon/mems 0
+    chown cameraserver cameraserver /dev/cpuset/camera-daemon
+    chown cameraserver cameraserver /dev/cpuset/camera-daemon/tasks
+    chmod 0660 /dev/cpuset/camera-daemon/tasks
+
+# access permissions for fingerprint
+    chown system system /sys/bus/platform/devices/soc/soc:fpc1020/irq
+    chown system system /sys/bus/platform/devices/soc/soc:fpc1020/wakeup_enable
+    chown system system /sys/bus/platform/devices/soc/soc:fpc1020/modalias
+    chmod 0666 /dev/qseecom
+    chmod 0644 /dev/goodix_fp
+    chown system system /dev/goodix_fp
+
+#add runin factory charging test
+    chmod 0777 /sys/class/power_supply/battery/input_suspend
+    chmod 0777 /sys/class/power_supply/battery/charging_enabled
+    chmod 0777 /sys/class/power_supply/usb/typec_cc_orientation
+    chown system system /sys/class/power_supply/battery/input_suspend
+    chown system system /sys/class/power_supply/battery/charging_enabled
+    chown system system /sys/class/power_supply/usb/typec_cc_orientation
+
+    chmod 0666 sys/devices/platform/soc/890000.i2c/i2c-1/1-005a/cali
+    chmod 0666 sys/devices/platform/soc/890000.i2c/i2c-1/1-005a/cali_save
+    chmod 0666 sys/devices/platform/soc/890000.i2c/i2c-1/1-005a/f0_save
+    chmod 0666 sys/devices/platform/soc/890000.i2c/i2c-1/1-005a/osc_save
+    chmod 0666 sys/devices/platform/soc/890000.i2c/i2c-1/1-005a/osc_cali
 
 #Load WLAN driver
-   insmod /vendor/lib/modules/qca_cld3_wlan.ko
+    insmod /vendor/lib/modules/qca_cld3_wlan.ko
 
 #USB controller configuration
-    setprop vendor.usb.rndis.func.name "rndis_bam"
-    setprop vendor.usb.rmnet.func.name "rmnet_bam"
+    setprop vendor.usb.rndis.func.name "gsi"
+    setprop vendor.usb.rmnet.func.name "gsi"
     setprop vendor.usb.rmnet.inst.name "rmnet"
     setprop vendor.usb.dpl.inst.name "dpl"
     setprop vendor.usb.qdss.inst.name "qdss"
-    write /sys/module/usb_f_qcrndis/parameters/rndis_dl_max_xfer_size 15916
     setprop sys.usb.configfs 1
 
     # Touchpanel
@@ -114,14 +168,25 @@ on boot
     chown system system /sys/touchpanel/double_tap
     chown system system /sys/touchpanel/reversed_keys
 
+#start camera server as daemon
+#service qcamerasvr /system/bin/mm-qcamera-daemon
+#    class late_start
+#    user camera
+#    group camera system inet input graphics
+
+service vendor.pd_mapper /vendor/bin/pd-mapper
+    class core
+    user system
+    group system
+
 #Peripheral manager
-service vendor.per_mgr /system/vendor/bin/pm-service
+service vendor.per_mgr /vendor/bin/pm-service
     class core
     user system
     group system
     ioprio rt 4
 
-service vendor.per_proxy /system/vendor/bin/pm-proxy
+service vendor.per_proxy /vendor/bin/pm-proxy
     class core
     user system
     group system
@@ -133,11 +198,22 @@ on property:init.svc.vendor.per_mgr=running
 on property:sys.shutdown.requested=*
     stop vendor.per_proxy
 
-#start camera server as daemon
-#service qcamerasvr /system/bin/mm-qcamera-daemon
-#    class late_start
-#    user camera
-#    group camera system inet input graphics
+on charger
+    mkdir /mnt/vendor/persist
+    chown root system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
+    mkdir /mnt/vendor/persist/subsys 0770 root system
+    start vendor.power_off_alarm
+    setprop sys.usb.controller a600000.dwc3
+    setprop sys.usb.configfs 1
+    chown system system /sys/class/leds/red/brightness
+    chmod 0666 /sys/class/leds/red/brightness
+    mkdir /data/vendor/charge_logger 0771 system system
+    start charge_logger
+    start vendor.power_off_alarm
+
+    #Set the vbus_offset_mv to 1.04v
+    setprop persist.vendor.cp.vbus_offset_mv 1040
 
 ## import cne init file
 #on post-fs
@@ -149,40 +225,28 @@ on property:sys.shutdown.requested=*
 #
 #on property:persist.usb.chgdisabled=0
 #    write /sys/class/power_supply/battery/charging_enabled 1
-#
-#service qrngd /system/bin/qrngd -f
-#   class main
-#   user root
-#   group root
-#
-#service qrngp /system/bin/qrngp
-#    class main
-#    user root
-#    group root
-#    oneshot
-#    disabled
-#
-#on property:sys.boot_completed=1
-#    start qrngp
-#
-service vendor.qseecomd /vendor/bin/qseecomd
-   class core
-   user root
-   group root
+
+#qiaojinpeng @20191118 QR_code feature
+service nv_mac /vendor/bin/nv_mac
+    class late_start
+    user system
+    group system inet net_raw wifi
+    oneshot
+
+on property:sys.boot_completed=1
+    start nv_mac
+#end
+
+service spdaemon /vendor/bin/spdaemon
+    class core
+    user system
+    group system
 
 #service qosmgrd /system/bin/qosmgr /system/etc/qosmgr_rules.xml
 #   user system
 #   group system
 #   disabled
 #
-service thermal-engine /system/vendor/bin/thermal-engine
-   class main
-   user root
-   socket thermal-send-client stream 0666 system system
-   socket thermal-recv-client stream 0660 system system
-   socket thermal-recv-passive-client stream 0666 system system
-   socket thermal-send-rule stream 0660 system system
-   group root
 
 #service security-check1 /sbin/security_boot_check system
 #    class core
@@ -192,68 +256,49 @@ service thermal-engine /system/vendor/bin/thermal-engine
 #    class core
 #    oneshot
 #
+#service time_daemon /system/vendor/bin/time_daemon
+#   class late_start
+#   user root
+#   group root
 
-service adsprpcd_root /vendor/bin/adsprpcd
-   class main
-   user media
-   group media
-
-service adsprpcd /vendor/bin/adsprpcd audiopd
-   class main
-   user media
-   group media
-
-service hbtp /system/vendor/bin/hbtp_daemon
-    class main
-    user system
-    group system
-    disabled
-
-service audiod /system/vendor/bin/audiod
-   class late_start
-   user system
-   group system
-
-service vendor.cdsprpcd /vendor/bin/cdsprpcd
-   class main
-   user system
-   group system
-   disabled
-
+#service audiod /vendor/bin/audiod
+#   class late_start
+#   user system
+#   group system
 #
-#service usf_tester /system/vendor/bin/usf_tester
+#service usf_tester /vendor/bin/usf_tester
 #    user system
 #    group system inet
 #    disabled
 #
-#service usf_epos /system/vendor/bin/usf_epos
+#service usf_epos /vendor/bin/usf_epos
 #    user system
 #    group system inet
 #    disabled
 #
-#service usf_gesture /system/vendor/bin/usf_gesture
+#service usf_gesture /vendor/bin/usf_gesture
 #    user system
 #    group system inet
 #    disabled
 #
 
-#service usf_sync_gesture /system/vendor/bin/usf_sync_gesture
+#service usf_sync_gesture /system/bin/usf_sync_gesture
 #    user system
 #    group system inet
 #    disabled
 #
 
-#service usf_p2p /system/vendor/bin/usf_p2p
+#service usf_p2p /system/bin/usf_p2p
 #    user system
 #    group system inet
 #    disabled
 #
-#service usf_hovering /system/vendor/bin/usf_hovering
+#service usf_hovering /vendor/bin/usf_hovering
 #    user system
 #    group system inet
 #    disabled
 #
-#service usf_proximity /system/vendor/bin/usf_proximity
+#service usf_proximity /system/bin/usf_proximity
 #    user system
 #    group system inet
 #    disabled
@@ -283,21 +328,21 @@ service vendor.cdsprpcd /vendor/bin/cdsprpcd
 #
 #
 #
-## imsdatadaemon starts with root and UID will be downgraded to SYSTEM.
+## imsqmidaemon starts with root and UID will be downgraded to RADIO.
 service vendor.imsqmidaemon /system/vendor/bin/imsqmidaemon
     class main
-    user system
+    user radio
     socket ims_qmid stream 0660 system radio
     group radio log diag
 
-# imsdatadaemon starts with root and UID will be downgraded to SYSTEM.
+# imsdatadaemon starts with root and UID will be downgraded to RADIO.
 service vendor.imsdatadaemon /system/vendor/bin/imsdatadaemon
     class main
-    user system
+    user radio
     socket ims_datad stream 0660 system radio
-    group system wifi radio inet log diag
+    group radio wifi inet log diag
     disabled
-#
+
 #service mdm_helper /system/bin/mdm_helper
 #    class core
 #    onrestart setprop ro.service.mdm_helper_restarted "true"
@@ -338,21 +383,6 @@ service vendor.imsdatadaemon /system/vendor/bin/imsdatadaemon
 #service gnss-detect /system/vendor/bin/gnss.qca1530.sh detect
 #   class core
 #   oneshot
-
-service energy-awareness /system/vendor/bin/energy-awareness
-    class main
-    user system
-    group system
-    oneshot
-
-service mdtpd /system/vendor/bin/mdtpd
-    class late_start
-    user root
-    group system radio drmrpc
-
-service vendor.pd_mapper /system/vendor/bin/pd-mapper
-     class core
-
 #
 ## QCA1530 SoC late_start group trigger
 #service gnss-init /system/vendor/bin/gnss.qca1530.sh init
@@ -366,13 +396,18 @@ service vendor.pd_mapper /system/vendor/bin/pd-mapper
 #   group gps system qcom_diag diag log inet net_raw
 #   disabled
 
+service vendor.imsrcsservice /system/vendor/bin/imsrcsd
+    class main
+    user radio
+    group radio diag inet log
+
 on property:vendor.ims.QMI_DAEMON_STATUS=1
     start vendor.imsdatadaemon
 
 on property:vold.decrypt=trigger_restart_framework
-   start cnss_diag
+   start vendor.cnss_diag
 
-service cnss_diag /system/vendor/bin/cnss_diag -q -f -t HELIUM
+service vendor.cnss_diag /system/vendor/bin/cnss_diag -q -f -t HELIUM
    class main
    user system
    group system wifi inet sdcard_rw media_rw diag
@@ -380,51 +415,31 @@ service cnss_diag /system/vendor/bin/cnss_diag -q -f -t HELIUM
 
 service vendor.ims_rtp_daemon /system/vendor/bin/ims_rtp_daemon
    class main
-   user system
-   group radio diag inet log
-
-service vendor.imsrcsservice /system/vendor/bin/imsrcsd
-   class main
-   user system
-   group radio diag inet log wakelock
+   user radio
+   group radio vendor_qti_diag inet log
 
 on property:vendor.ims.DATA_DAEMON_STATUS=1
     restart vendor.ims_rtp_daemon
 
-
-service ppd /system/vendor/bin/mm-pp-dpps
+service ppd /vendor/bin/mm-pp-dpps
     class late_start
     user system
     group system graphics
     socket pps stream 0660 system system
     disabled
 
-on property:init.svc.surfaceflinger=stopped
+on property:init.svc.hwcomposer-2-1=stopped
     stop ppd
 
-on property:init.svc.surfaceflinger=running
+on property:init.svc.hwcomposer-2-1=running
     start ppd
 
-on property:init.svc.surfaceflinger=restarting
+on property:init.svc.hwcomposer-2-1=restarting
     stop ppd
 
-on property:init.svc.zygote=stopped
-    stop ppd
+on property:ro.boot.multisim_config=*
+    setprop persist.radio.multisim.config ${ro.boot.multisim_config}
 
-on property:init.svc.zygote=running
-    start ppd
-
-on property:init.svc.zygote=restarting
-    stop ppd
-
-on charger
-    load_system_props
-    start qcom-post-boot
-    start vendor.hvdcp_opti
-    setprop sys.usb.configfs 1
-    start power_off_alarm
-
-#
 #service nqs /system/bin/nqs
 #    class late_start
 #    socket nqs_qsb_comm stream 660 system system
@@ -443,15 +458,24 @@ on charger
 #    user system
 #    group system
 
-service seempd /system/bin/seempd
+service hbtp /system/vendor/bin/hbtp_daemon
+     class main
+     user system
+     group system
+     disabled
+
+service qfp-daemon /vendor/bin/qfp-daemon
     class late_start
     user system
-    group system sdcard_rw
-    socket seempdw dgram 0666 system system
+    group system drmrpc diag input
 
-service vendor.hvdcp_opti /system/vendor/bin/hvdcp_opti
-     class main
-     user root
-     group system wakelock
+service energy-awareness /system/vendor/bin/energy-awareness
+    class main
+    user system
+    group system
+    oneshot
 
-
+service smcinvoked /system/bin/smcinvoked
+    class main
+    user system
+    group system
