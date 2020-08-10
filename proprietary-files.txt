@@ -749,6 +749,9 @@ vendor/lib64/libmlipay@1.1.so
 vendor/lib64/vendor.xiaomi.hardware.mlipay@1.0.so
 vendor/lib64/vendor.xiaomi.hardware.mlipay@1.1.so
 
+# NFC - from joyeuse QKQ1.191215.002 V11.0.5.0.QJZMIXM
+vendor/lib/libpn553_fw.so|a8e29cc3ebb2e0df0fb505fc2da9c69a015680fb
+
 # Perf
 vendor/bin/hw/vendor.qti.hardware.perf@2.0-service
 vendor/bin/msm_irqbalance
