@@ -27,7 +27,7 @@ DEVICE_PATH := device/xiaomi/curtana
 BOARD_VENDOR := xiaomi
 
 # Assert
-TARGET_OTA_ASSERT_DEVICE := curtana
+TARGET_OTA_ASSERT_DEVICE := curtana,excalibur,gram,joyeuse
 
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := atoll
