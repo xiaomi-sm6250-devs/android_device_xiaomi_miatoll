@@ -479,3 +479,8 @@ service smcinvoked /system/bin/smcinvoked
     class main
     user system
     group system
+
+on boot && property:ro.product.vendor.device=*
+    stop thermal-engine
+    mount none /vendor/etc/thermal-engine-map-${ro.product.vendor.device}.conf /vendor/etc/thermal-engine-map.conf bind
+    start thermal-engine
