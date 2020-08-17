@@ -16,7 +16,9 @@
 
 LOCAL_PATH := $(call my-dir)
 
-ifneq ($(filter curtana excalibur joyeuse,$(TARGET_DEVICE)),)
+ifeq ($(TARGET_DEVICE),curtana)
+    subdir_makefiles=$(call first-makefiles-under,$(LOCAL_PATH))
+    $(foreach mk,$(subdir_makefiles),$(info including $(mk) ...)$(eval include $(mk)))
 
 include $(CLEAR_VARS)
 

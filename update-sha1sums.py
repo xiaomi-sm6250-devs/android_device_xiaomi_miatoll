@@ -20,7 +20,7 @@ import os
 import sys
 from hashlib import sha1
 
-DEVICE = 'sm6250-common'
+DEVICE = 'curtana'
 VENDOR = 'xiaomi'
 VENDOR_PATH = os.path.join(
     *['..', '..', '..', 'vendor', VENDOR, DEVICE, 'proprietary'])

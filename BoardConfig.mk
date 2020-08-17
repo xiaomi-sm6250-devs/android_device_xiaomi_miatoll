@@ -22,13 +22,20 @@
 # definition file).
 #
 
-COMMON_PATH := device/xiaomi/sm6250-common
+DEVICE_PATH := device/xiaomi/curtana
 
 BOARD_VENDOR := xiaomi
+
+# Assert
+TARGET_OTA_ASSERT_DEVICE := curtana
 
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := atoll
 TARGET_NO_BOOTLOADER := true
+
+# Boot animation
+TARGET_SCREEN_HEIGHT := 2400
+TARGET_SCREEN_WIDTH := 1080
 
 # Platform
 TARGET_BOARD_PLATFORM := atoll
@@ -66,6 +73,7 @@ TARGET_KERNEL_ARCH := arm64
 TARGET_KERNEL_HEADER_ARCH := arm64
 TARGET_KERNEL_SOURCE := kernel/xiaomi/sm6250
 TARGET_KERNEL_CLANG_COMPILE := true
+TARGET_KERNEL_CONFIG := curtana_defconfig
 
 # QCOM hardware
 BOARD_USES_QCOM_HARDWARE := true
@@ -88,7 +96,7 @@ AUDIO_FEATURE_ENABLED_FM_POWER_OPT := true
 BOARD_HAVE_BLUETOOTH_QCOM := true
 BOARD_HAS_QCA_BT_SOC := "cherokee"
 BLUETOOTH_HCI_USE_MCT := true
-BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := $(COMMON_PATH)/bluetooth
+BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := $(DEVICE_PATH)/bluetooth
 QCOM_BT_USE_BTNV := true
 QCOM_BT_USE_SMD_TTY := true
 
@@ -104,7 +112,8 @@ BOARD_USES_QCNE := true
 
 # Display
 USE_DEVICE_SPECIFIC_DISPLAY := true
-DEVICE_SPECIFIC_DISPLAY_PATH := $(COMMON_PATH)/qcom-caf/display
+DEVICE_SPECIFIC_DISPLAY_PATH := $(DEVICE_PATH)/qcom-caf/display
+TARGET_SCREEN_DENSITY := 420
 TARGET_USES_HWC2 := true
 TARGET_USES_GRALLOC1 := true
 TARGET_USES_ION := true
@@ -137,12 +146,12 @@ BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE := default
 LOC_HIDL_VERSION := 3.0
 
 # HIDL
-DEVICE_FRAMEWORK_MANIFEST_FILE := $(COMMON_PATH)/configs/manifests/framework_manifest.xml
-DEVICE_MANIFEST_FILE := $(COMMON_PATH)/configs/manifests/manifest.xml
-DEVICE_MATRIX_FILE := $(COMMON_PATH)/configs/manifests/compatibility_matrix.xml
+DEVICE_FRAMEWORK_MANIFEST_FILE := $(DEVICE_PATH)/configs/manifests/framework_manifest.xml
+DEVICE_MANIFEST_FILE := $(DEVICE_PATH)/configs/manifests/manifest.xml
+DEVICE_MATRIX_FILE := $(DEVICE_PATH)/configs/manifests/compatibility_matrix.xml
 
 # Init
-TARGET_INIT_VENDOR_LIB := //$(COMMON_PATH):libinit_atoll
+TARGET_INIT_VENDOR_LIB := //$(DEVICE_PATH):libinit_atoll
 TARGET_RECOVERY_DEVICE_MODULES := libinit_atoll
 
 # Keystore
@@ -181,7 +190,7 @@ TARGET_COPY_OUT_PRODUCT := product
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 
-TARGET_FS_CONFIG_GEN := $(COMMON_PATH)/config.fs
+TARGET_FS_CONFIG_GEN := $(DEVICE_PATH)/config.fs
 
 # Power
 TARGET_USES_INTERACTION_BOOST := true
@@ -190,21 +199,24 @@ TARGET_USES_INTERACTION_BOOST := true
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_INCLUDE_RECOVERY_DTBO := true
 BOARD_HAS_LARGE_FILESYSTEM := true
-TARGET_RECOVERY_FSTAB := $(COMMON_PATH)/rootdir/etc/fstab.qcom
+TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.qcom
 TARGET_RECOVERY_PIXEL_FORMAT := "RGBX_8888"
 
 # Releasetools
-TARGET_RELEASETOOLS_EXTENSIONS := $(COMMON_PATH)
+TARGET_RELEASETOOLS_EXTENSIONS := $(DEVICE_PATH)
 
 # RIL
 ENABLE_VENDOR_RIL_SERVICE := true
 TARGET_PROVIDES_QTI_TELEPHONY_JAR := true
 
+# Security patch level
+VENDOR_SECURITY_PATCH := 2020-07-01
+
 # SELinux
 include device/qcom/sepolicy/sepolicy.mk
-BOARD_SEPOLICY_DIRS += $(COMMON_PATH)/sepolicy/vendor
-BOARD_PLAT_PUBLIC_SEPOLICY_DIR += $(COMMON_PATH)/sepolicy/public
-BOARD_PLAT_PRIVATE_SEPOLICY_DIR += $(COMMON_PATH)/sepolicy/private
+BOARD_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
+BOARD_PLAT_PUBLIC_SEPOLICY_DIR += $(DEVICE_PATH)/sepolicy/public
+BOARD_PLAT_PRIVATE_SEPOLICY_DIR += $(DEVICE_PATH)/sepolicy/private
 
 # Treble
 PRODUCT_VENDOR_MOVE_ENABLED := true
@@ -234,4 +246,4 @@ WIFI_HIDL_FEATURE_DUAL_INTERFACE := true
 WPA_SUPPLICANT_VERSION := VER_0_8_X
 
 # Inherit the proprietary files
-include vendor/xiaomi/sm6250-common/BoardConfigVendor.mk
+-include vendor/xiaomi/curtana/BoardConfigVendor.mk

@@ -17,8 +17,8 @@
 
 set -e
 
-DEVICE_COMMON=sm6250-common
-VENDOR=xiaomi
+export DEVICE=curtana
+export VENDOR=xiaomi
 
 # Load extract_utils and do some sanity checks
 MY_DIR="${BASH_SOURCE%/*}"
@@ -74,23 +74,9 @@ function blob_fixup() {
 }
 
 # Initialize the common helper
-setup_vendor "$DEVICE_COMMON" "$VENDOR" "$LINEAGE_ROOT" true $CLEAN_VENDOR
+setup_vendor "$DEVICE" "$VENDOR" "$LINEAGE_ROOT" true $CLEAN_VENDOR
 
 extract "$MY_DIR"/proprietary-files.txt "$SRC" \
     "${KANG}" --section "${SECTION}"
-
-if [ -s "$MY_DIR"/../$DEVICE_SPECIFIED_COMMON/proprietary-files.txt ];then
-    # Reinitialize the helper for device specified common
-    setup_vendor "$DEVICE_SPECIFIED_COMMON" "$VENDOR" "$LINEAGE_ROOT" false "$CLEAN_VENDOR"
-    extract "$MY_DIR"/../$DEVICE_SPECIFIED_COMMON/proprietary-files.txt "$SRC" \
-    "${KANG}" --section "${SECTION}"
-fi
-
-if [ -s "$MY_DIR"/../$DEVICE/proprietary-files.txt ]; then
-    # Reinitialize the helper for device
-    setup_vendor "$DEVICE" "$VENDOR" "$LINEAGE_ROOT" false "$CLEAN_VENDOR"
-    extract "$MY_DIR"/../$DEVICE/proprietary-files.txt "$SRC" \
-    "${KANG}" --section "${SECTION}"
-fi
 
 "$MY_DIR"/setup-makefiles.sh
